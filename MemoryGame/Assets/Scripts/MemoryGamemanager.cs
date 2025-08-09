@@ -3,17 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.UIElements;
-using static UnityEngine.Rendering.GPUSort;
+
 
 public class MemoryGameManager : GameManagerBase
 {
     [Header("Board")]
     public GameObject cardPrefab;         // prefab containing a concrete Card (CardBase)
-    [SerializeField] private GridLayoutGroup gridLayout;     // assign a RectTransform (UI) or a normal Transform (world)
+    [SerializeField] 
+    private GridLayoutGroup gridLayout;     // assign a RectTransform (UI) 
     public int rows = 2;
     public int cols = 4;
-    [Tooltip("If zero, UI mode auto-fits to parent size. For world mode it will default to 1x1 units.")]
     public Vector2 cardSize = Vector2.zero; // UI: pixels, World: units (if zero -> will auto-calc defaults)
     public float spacing = 10f;           // UI: pixels gap, World: units gap
 
@@ -21,24 +20,71 @@ public class MemoryGameManager : GameManagerBase
     public Sprite backSprite;
     public List<Sprite> frontSprites;     // must contain at least (rows*cols)/2 unique sprites
 
-  
-    private bool canFlip = true;
 
-  
+
+    private bool canFlip = true;
+    private int score;
+    private float timeRemaining = 120f;
 
     private List<CardBase> cards = new List<CardBase>();
     private List<CardBase> revealedCards = new List<CardBase>();
     private List<int> matchedCardIDs = new List<int>();
 
-
-
-
-
+    [SerializeField]
+    WinScreen winScreen;    
+    [SerializeField]
+    Timer timer;
+    [SerializeField]
+    InputField col_Input, row_Input;
     private void Start()
     {
-        SetupCards();
+        LoadOrStartNewGame();
+    }
+    private void RestoreMatchedCards()
+    {
+        foreach (CardBase card in cards)
+        {
+            if (matchedCardIDs.Contains(card.cardId))
+            {
+                StartCoroutine(card.FlipAnimation(true)); 
+            }
+        }
+      
     }
 
+    private void SaveProgress()
+    {
+        SaveData data = new SaveData
+        {
+            score = score,
+            timeRemaining = timeRemaining,
+            matchedCardIDs = new List<int>(matchedCardIDs)
+        };
+        SaveLoadManager.SaveGame(data);
+    }
+    private void LoadOrStartNewGame()
+    {
+        SaveData data = SaveLoadManager.LoadGame();
+        if (data != null ) // totalUniqueCards = number of unique pairs in the game
+        {
+            score = data.score;
+            timeRemaining = data.timeRemaining;
+            matchedCardIDs = new List<int>(data.matchedCardIDs);
+            Debug.Log($"Loaded Game: Score={score}, Time={timeRemaining}");
+            
+            SetupCards();
+            if (matchedCardIDs.Count == cards.Count / 2)
+            {
+                StartGameAgain();
+                return;
+            }
+            RestoreMatchedCards();
+        }
+        else
+        {
+            SetupCards();
+        }
+    }
 
     private void SetupCards()
     {
@@ -72,10 +118,13 @@ public class MemoryGameManager : GameManagerBase
             card.Initialize(id, frontSprites[id % frontSprites.Count], backSprite, this);
             cards.Add(card);
         }
-       
+        timer.StartCoroutine(timer.StartTimer(120, TimerFinished));
     }
    
-   
+    void TimerFinished()
+    {
+        winScreen.Set(false);
+    }
     
    
     public override bool CanFlip() => canFlip;
@@ -93,12 +142,19 @@ public class MemoryGameManager : GameManagerBase
     {
         // Reset score and tracking lists
        
-      
-      
+        if(string.IsNullOrEmpty(col_Input.text) || string.IsNullOrEmpty(row_Input.text))
+        {
+            return;
+        }
+        score = 0;
+        cols = int.Parse(col_Input.text);
+        rows = int.Parse(row_Input.text);
+        timer.StopCoroutine();
+        timeRemaining = 120;
         matchedCardIDs.Clear();
         revealedCards.Clear();
         cards.Clear();
-       
+        winScreen.gameObject.SetActive(false);
         // Reset UI (if you have score text)
 
         // Destroy all current cards in the scene
@@ -110,17 +166,17 @@ public class MemoryGameManager : GameManagerBase
         // Shuffle and spawn new cards
         SetupCards();
 
-         // Reset gameplay flags
-       
+        
         canFlip = true;
 
         // Save new empty progress
-     
+        SaveProgress();
     }
 
     void OnAllCardsMatched()
     {
-      
+        timer.StopCoroutine();
+        winScreen.Set(true);
         Debug.Log("Game Over - All matches found!");
     }
     IEnumerator CheckMatch()
@@ -129,7 +185,7 @@ public class MemoryGameManager : GameManagerBase
 
         if (revealedCards[0].cardId == revealedCards[1].cardId)
         {
-          
+            score += 10;
             matchedCardIDs.Add(revealedCards[0].cardId);
             if (matchedCardIDs.Count == cards.Count/2) // totalUniqueCards = number of unique pairs in the game
             {
@@ -144,9 +200,9 @@ public class MemoryGameManager : GameManagerBase
         }
 
         revealedCards.Clear();
-    
+        SaveProgress();
 
-        
+      
         canFlip = true;
     }
 }
