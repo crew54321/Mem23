@@ -175,6 +175,7 @@ public class MemoryGameManager : GameManagerBase
 
     void OnAllCardsMatched()
     {
+        AudioManager.Instance.PlayWin();
         timer.StopCoroutine();
         winScreen.Set(true);
         Debug.Log("Game Over - All matches found!");
@@ -186,6 +187,7 @@ public class MemoryGameManager : GameManagerBase
         if (revealedCards[0].cardId == revealedCards[1].cardId)
         {
             score += 10;
+            AudioManager.Instance.PlayMatch();
             matchedCardIDs.Add(revealedCards[0].cardId);
             if (matchedCardIDs.Count == cards.Count/2) // totalUniqueCards = number of unique pairs in the game
             {

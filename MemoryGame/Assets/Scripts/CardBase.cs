@@ -49,7 +49,8 @@ public class CardBase : MonoBehaviour, ICard
     }
     public IEnumerator FlipAnimation(bool showFront)
     {
-      
+        AudioManager.Instance.PlayCardFlip();
+
         isAnimating = true;
 
       
