@@ -1,0 +1,8 @@
+/MemoryGame/Library
+/MemoryGame/ProjectSettings
+/MemoryGame/Temp
+/MemoryGame/Logs
+/MemoryGame/UserSettings
+*.sln
+MemoryGame/.vsconfig
+*.csproj
