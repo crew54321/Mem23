@@ -6,3 +6,5 @@
 *.sln
 MemoryGame/.vsconfig
 *.csproj
+/MemoryGame/.vs
+/MemoryGame/obj
